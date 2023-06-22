@@ -32,7 +32,12 @@ impl Storage {
     //     // Implement here
     // }
     /// If key exists insert a new version (if autoincrement is true)
-    pub fn put(&self, key: Key, value: Value, _autoincrement: bool) -> StorageResult<Option<IVec>> {
+    pub fn put(
+        &self,
+        key: Key,
+        value: Value,
+        _autoincrement: bool,
+    ) -> StorageResult<Option<Value>> {
         let key = key.0;
 
         /* Simple version */
@@ -42,13 +47,23 @@ impl Storage {
             Ok(k) => match k {
                 Some(_) => {
                     if _autoincrement {
-                        return Ok(self.engine.insert(key, IVec::from(value))?);
+                        // This is duplication of code. Can be extracted to a separate function.
+                        let result = self.engine.insert(key, IVec::from(value))?;
+                        match result {
+                            Some(v) => return Ok(Some(v.to_vec())),
+                            None => return Ok(None),
+                        }
                     }
                     // Keep the old version.
                     return Ok(None);
                 }
                 None => {
-                    return Ok(self.engine.insert(key, IVec::from(value))?);
+                    // This is duplication of code. Can be extracted to a separate function.
+                    let result = self.engine.insert(key, IVec::from(value))?;
+                    match result {
+                        Some(v) => Ok(Some(v.to_vec())),
+                        None => Ok(None),
+                    }
                 }
             },
             Err(e) => return Err(e.into()),
@@ -100,7 +115,7 @@ mod tests {
         let result = s.put(key1, value2.clone(), true);
 
         // Assertion
-        assert_eq!(result.unwrap().unwrap(), IVec::from(value1));
+        assert_eq!(result.unwrap().unwrap(), value1);
     }
 
     #[test]
