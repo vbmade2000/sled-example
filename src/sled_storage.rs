@@ -46,11 +46,27 @@ impl Storage {
             }),
         }
     }
-    // /// Fetch from db data but ignore timestamp in key and always get the latest timestamp
-    // fn get_latest(&self, key: Key) // -> ??
-    // {
-    //     // Implement here
-    // }
+    /// Fetch from db data but ignore timestamp in key and always get the latest timestamp
+    pub fn get_latest(&self, key: Key) -> StorageResult<Value> {
+        let extracted_key = key.0;
+
+        // Scan database for a prefix. Prefix includes everything before timestamp. So
+        // we need to remove timestamp bytes to get prefix.
+        let prefix = &extracted_key[0..18];
+        let iterator = self.engine.scan_prefix(prefix);
+        let result = iterator.last();
+        if let Some(v) = result {
+            if let Ok(v) = v {
+                return Ok(v.1.to_vec());
+            }
+        }
+        Err(StorageError::KeyNotFound {
+            key: key,
+            start_key: key,
+            end_key: key,
+        })
+    }
+
     /// If key exists insert a new version (if autoincrement is true)
     pub fn put(
         &self,
@@ -67,7 +83,6 @@ impl Storage {
         let timesmap = self.get_current_timestamp();
         new_key.extend(timesmap);
 
-        /* Simple version */
         // TODO: Check if compare_and_swap() can be used.
         let existing_key = self.engine.get(key);
         match existing_key {

@@ -1,3 +1,5 @@
+use std::{thread, time::Duration};
+
 use crate::{keys::Key, sled_storage::Storage};
 
 mod interface;
@@ -11,14 +13,20 @@ fn main() {
         1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8,
     ]);
     let value1 = vec![9, 8, 7];
-    let r1 = s.put(key1, value1, false);
+    let _ = s.put(key1, vec![1, 1, 1], false);
+    thread::sleep(Duration::from_secs(2));
+    let _ = s.put(key1, vec![2, 2, 2], true);
+    thread::sleep(Duration::from_secs(2));
+    let _ = s.put(key1, vec![3, 3, 3], true);
+    thread::sleep(Duration::from_secs(2));
+    let _ = s.put(key1, vec![4, 4, 4], true);
+    thread::sleep(Duration::from_secs(2));
+    let _ = s.put(key1, vec![5, 5, 5], true);
+    thread::sleep(Duration::from_secs(2));
+    let _ = s.put(key1, vec![6, 6, 6], true);
+    thread::sleep(Duration::from_secs(2));
+    let _ = s.put(key1, vec![7, 7, 7], true);
 
-    // let key2 = Key([
-    //     1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8,
-    // ]);
-    // let value2 = vec![6, 5, 4];
-    // let r2 = s.put(key2, value2, false);
-
-    // println!("Hello, world => {:?}", r1);
-    // println!("Hello, world => {:?}", r2);
+    let p = s.get_latest(key1);
+    println!("RESULT: {:?}", p);
 }
