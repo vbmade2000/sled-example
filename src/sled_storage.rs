@@ -3,6 +3,7 @@ use crate::keys::{Key, KvPair, Value};
 use sled::{self, IVec};
 use sled::{Batch, Db};
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, Debug)]
 pub struct Storage {
@@ -19,6 +20,16 @@ impl Storage {
             .flush_every_ms(Some(1000));
         let db = config.open().unwrap();
         Self { engine: db }
+    }
+
+    fn get_current_timestamp(&self) -> Vec<u8> {
+        let start = SystemTime::now();
+        start
+            .duration_since(UNIX_EPOCH)
+            .expect("Error in retrieving current timestamp")
+            .as_secs()
+            .to_le_bytes()
+            .to_vec()
     }
 
     /// Get the value at key and returns it
@@ -38,7 +49,14 @@ impl Storage {
         value: Value,
         _autoincrement: bool,
     ) -> StorageResult<Option<Value>> {
+        // TODO: Raise error if key length is more than X.
+
         let key = key.0;
+
+        // Modify key to add current timestamp
+        let mut new_key = key[0..18].to_vec();
+        let timesmap = self.get_current_timestamp();
+        new_key.extend(timesmap);
 
         /* Simple version */
         // TODO: Check if compare_and_swap() can be used.
@@ -48,7 +66,7 @@ impl Storage {
                 Some(_) => {
                     if _autoincrement {
                         // This is duplication of code. Can be extracted to a separate function.
-                        let result = self.engine.insert(key, IVec::from(value))?;
+                        let result = self.engine.insert(new_key, IVec::from(value))?;
                         match result {
                             Some(v) => return Ok(Some(v.to_vec())),
                             None => return Ok(None),
@@ -59,7 +77,7 @@ impl Storage {
                 }
                 None => {
                     // This is duplication of code. Can be extracted to a separate function.
-                    let result = self.engine.insert(key, IVec::from(value))?;
+                    let result = self.engine.insert(new_key, IVec::from(value))?;
                     match result {
                         Some(v) => Ok(Some(v.to_vec())),
                         None => Ok(None),
