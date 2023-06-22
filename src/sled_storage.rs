@@ -1,4 +1,4 @@
-use crate::interface::StorageResult;
+use crate::interface::{StorageError, StorageResult};
 use crate::keys::{Key, KvPair, Value};
 use sled::{self, IVec};
 use sled::{Batch, Db};
@@ -33,10 +33,19 @@ impl Storage {
     }
 
     /// Get the value at key and returns it
-    // fn get(&self, key: Key) -> StorageResult<Value> {
+    fn get(&self, key: Key) -> StorageResult<Value> {
+        // Fetch value
+        let value = self.engine.get(key.0)?;
 
-    //     // Implement here
-    // }
+        match value {
+            Some(v) => Ok(v.to_vec()),
+            None => Err(StorageError::KeyNotFound {
+                key: key,
+                start_key: key,
+                end_key: key,
+            }),
+        }
+    }
     // /// Fetch from db data but ignore timestamp in key and always get the latest timestamp
     // fn get_latest(&self, key: Key) // -> ??
     // {
@@ -174,5 +183,47 @@ mod tests {
 
         // Assertion
         assert_eq!(result.unwrap(), None);
+    }
+
+    #[test]
+    fn test_get_key_exist() {
+        let s = Storage::new("test_database5.db");
+
+        // Input: Existing Key
+
+        // Preparation
+        let key = Key([
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8,
+        ]);
+        let value = vec![9, 8, 7];
+        let _ = s.put(key, value.clone(), false);
+
+        // Call
+        let result = s.get(key);
+
+        // Assertion
+        assert_eq!(result.unwrap(), value);
+    }
+
+    #[test]
+    fn test_get_key_nonexistant() {
+        let s = Storage::new("test_database6.db");
+
+        // Input: Non-Existing Key
+
+        // Preparation
+        let some_non_existant_key = Key([
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8,
+        ]);
+        // let _ = s.put(key, value.clone(), false);
+
+        // Call
+        let result = s.get(some_non_existant_key);
+
+        // Assertion
+        assert_eq!(result.is_err(), true);
+
+        // This requires [derive(PartialEq)] for StorageError.
+        // assert_eq!(result.err().unwrap(), StorageError::KeyNotFound { key: key, start_key: key, end_key: key });
     }
 }
